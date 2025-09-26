@@ -1,0 +1,703 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MR-{biofoundary_type}-{YY}-{####}",
+ "creation": "2025-09-24 13:05:56.097620",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_dxpm",
+  "biofoundary_type",
+  "oligo_type",
+  "stages",
+  "project",
+  "purpose",
+  "required_by",
+  "priority",
+  "column_break_gpsy",
+  "production",
+  "requested_from",
+  "standard_timeline",
+  "lead_time",
+  "acceptance_date",
+  "requested_lead_time",
+  "created_by",
+  "full_name",
+  "assign_to",
+  "section_break_soqk",
+  "item_detail",
+  "timeline_tab",
+  "list_kit_value",
+  "start_date",
+  "column_break_mfst",
+  "status",
+  "end_date",
+  "timeline_for_manufacturing_section",
+  "timeline_column",
+  "table_sumu",
+  "manufacturing_planning_tab",
+  "bom_info_section",
+  "from_bom",
+  "bom_no",
+  "company",
+  "column_break_mvbr",
+  "quantity",
+  "get_items",
+  "item",
+  "uom",
+  "item_name",
+  "section_break_niix",
+  "items",
+  "material_request_planning_section",
+  "include_non_stock_items",
+  "include_subcontracted_items",
+  "consider_minimum_order_qty",
+  "include_safety_stock_in_required_qty_calculation",
+  "ignore_available_stock",
+  "column_break_dazd",
+  "raw_materials_warehouse",
+  "get_items_for_mr",
+  "transfer_materials",
+  "accounting_dimensions_section",
+  "custom_line_of_business",
+  "custom_cost_centre",
+  "column_break_sbbf",
+  "custom_cc",
+  "custom_person_responsible",
+  "material_request",
+  "section_break_qohn",
+  "raw_materials",
+  "manufacturing_process_tab",
+  "section_break_qpmv",
+  "operations",
+  "tab_break_nzlh",
+  "work_order_progress",
+  "work_order_section",
+  "work_order",
+  "production_item",
+  "production_quantity",
+  "use_multi_level_bom",
+  "target_warehouse",
+  "column_break_atlq",
+  "bom",
+  "planned_start_date",
+  "wip_warehouse",
+  "section_break_vvnm",
+  "required_items",
+  "operation",
+  "job_card_tab",
+  "workstation_dashboard",
+  "section_break_utyi",
+  "job_card",
+  "section_break_wfwa",
+  "job_card_details",
+  "activity_tab",
+  "html_aeqb",
+  "note",
+  "connections_tab",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_dxpm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "biofoundary_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Biofoundry Type",
+   "options": "\nPlasmid\nOligo\nLNP",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.biofoundary_type==\"Oligo\" ",
+   "fieldname": "oligo_type",
+   "fieldtype": "Select",
+   "label": "Oligo Type",
+   "options": "\nRG-Primers"
+  },
+  {
+   "fieldname": "stages",
+   "fieldtype": "Select",
+   "label": "Stages",
+   "options": "\nR&D\nGMP Like\nGMP"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Data",
+   "label": "Project",
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Small Text",
+   "label": "Purpose",
+   "reqd": 1
+  },
+  {
+   "fieldname": "required_by",
+   "fieldtype": "Date",
+   "label": "Required by",
+   "reqd": 1
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "Low\nMed\nHigh\nUrgent"
+  },
+  {
+   "fieldname": "column_break_gpsy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state==\"Pending Approval from Oligo Head\" || \r\n     doc.workflow_state==\"Accepted from Oligo Head\" || \r\n     doc.workflow_state==\"Rejected by Oligo Head\" || \r\n     doc.workflow_state==\"Pending from Operator\" || \r\n     doc.workflow_state==\"Work In Progress\" || \r\n     doc.workflow_state==\"Order created\" || \r\n     doc.workflow_state==\"Transfer to QC\" || \r\n     doc.workflow_state==\"Completed\"\r\n",
+   "fieldname": "production",
+   "fieldtype": "Select",
+   "label": "Production",
+   "mandatory_depends_on": "eval:doc.workflow_state==\"Pending Approval from Oligo Head\"\r\n",
+   "options": "Internal\nExternal",
+   "permlevel": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "requested_from",
+   "fieldtype": "Date",
+   "label": "Transaction Date",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.workflow_state==\"Pending Approval from Oligo Head\" || \r\n     doc.workflow_state==\"Accepted from Oligo Head\" || \r\n     doc.workflow_state==\"Rejected by Oligo Head\" || \r\n     doc.workflow_state==\"Pending from Operator\" || \r\n     doc.workflow_state==\"Work In Progress\" || \r\n     doc.workflow_state==\"Order created\" || \r\n     doc.workflow_state==\"Transfer to QC\" || \r\n     doc.workflow_state==\"Completed\"\r\n",
+   "fieldname": "standard_timeline",
+   "fieldtype": "Link",
+   "label": "Standard Timeline",
+   "link_filters": "[[\"Workstation\",\"status\",\"=\",\"Production\"]]",
+   "mandatory_depends_on": "eval:doc.workflow_state==\"Pending Approval from Oligo Head\"\r\n",
+   "options": "Workstation",
+   "permlevel": 1
+  },
+  {
+   "fieldname": "lead_time",
+   "fieldtype": "Data",
+   "label": "Required Lead Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "acceptance_date",
+   "fieldtype": "Date",
+   "label": "Acceptance Date",
+   "options": "Today",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "requested_lead_time",
+   "fieldtype": "Data",
+   "label": "Requested Lead time",
+   "read_only": 1
+  },
+  {
+   "default": "__user",
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "created_by.full_name",
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "label": "Full Name"
+  },
+  {
+   "depends_on": "eval:doc.workflow_state==\"Pending Approval from Oligo Head\" || \r\n     doc.workflow_state==\"Accepted from Oligo Head\" || \r\n     doc.workflow_state==\"Rejected by Oligo Head\" || \r\n     doc.workflow_state==\"Pending from Operator\" || \r\n     doc.workflow_state==\"Work In Progress\" || \r\n     doc.workflow_state==\"Order created\" || \r\n     doc.workflow_state==\"Transfer to QC\" || \r\n     doc.workflow_state==\"Completed\"\r\n",
+   "fieldname": "assign_to",
+   "fieldtype": "Link",
+   "label": "Assign to",
+   "mandatory_depends_on": "eval:doc.workflow_state==\"Pending Approval from Oligo Head\"\r\n",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_break_soqk",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "item_detail",
+   "fieldtype": "Table",
+   "label": "Item Detail",
+   "options": "Biofoundary child",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: (\r\n    doc.workflow_state == \"Work In Progress\" ||\r\n    doc.workflow_state == \"Order created\" ||\r\n    doc.workflow_state == \"Transfer to QC\" ||\r\n    doc.workflow_state == \"Completed\"\r\n) && frappe.user.has_role(\"Oligo Team\") || frappe.user.has_role('Plasmid MFG')",
+   "fieldname": "timeline_tab",
+   "fieldtype": "Tab Break",
+   "label": "Timeline"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "list_kit_value",
+   "fieldtype": "Link",
+   "label": "Activity For",
+   "options": "Plasmid kit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "column_break_mfst",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "hidden": 1,
+   "label": "End Date"
+  },
+  {
+   "fieldname": "timeline_for_manufacturing_section",
+   "fieldtype": "Section Break",
+   "label": "Timeline for Manufacturing"
+  },
+  {
+   "fieldname": "timeline_column",
+   "fieldtype": "Column Break",
+   "label": "Timeline"
+  },
+  {
+   "fieldname": "table_sumu",
+   "fieldtype": "Table",
+   "options": "Biofoundary Plasmid Kit"
+  },
+  {
+   "fieldname": "manufacturing_planning_tab",
+   "fieldtype": "Tab Break",
+   "label": "Manufacturing Planning"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "bom_info_section",
+   "fieldtype": "Section Break",
+   "label": "BOM Info"
+  },
+  {
+   "default": "0",
+   "fieldname": "from_bom",
+   "fieldtype": "Check",
+   "label": "From BOM"
+  },
+  {
+   "depends_on": "from_bom",
+   "fieldname": "bom_no",
+   "fieldtype": "Link",
+   "label": "BOM no.",
+   "options": "BOM"
+  },
+  {
+   "fetch_from": "bom_no.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_mvbr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "from_bom",
+   "fieldname": "quantity",
+   "fieldtype": "Data",
+   "label": "Quantity"
+  },
+  {
+   "depends_on": "from_bom",
+   "fieldname": "get_items",
+   "fieldtype": "Button",
+   "label": "Get Items"
+  },
+  {
+   "fetch_from": "bom_no.item",
+   "fieldname": "item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bom_no.uom",
+   "fieldname": "uom",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "UOM",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bom_no.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_niix",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "BOM Items",
+   "options": "Stock Entry Detail"
+  },
+  {
+   "fieldname": "material_request_planning_section",
+   "fieldtype": "Section Break",
+   "label": "Material Request Planning"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_non_stock_items",
+   "fieldtype": "Check",
+   "label": "Include Non Stock Items"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_subcontracted_items",
+   "fieldtype": "Check",
+   "label": "Include Subcontracted Items"
+  },
+  {
+   "default": "0",
+   "fieldname": "consider_minimum_order_qty",
+   "fieldtype": "Check",
+   "label": "Consider Minimum Order Qty"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_safety_stock_in_required_qty_calculation",
+   "fieldtype": "Check",
+   "label": "Include Safety Stock in Required Qty Calculation"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, the system will create material requests even if the stock exists in the 'Raw Materials Warehouse'.",
+   "fieldname": "ignore_available_stock",
+   "fieldtype": "Check",
+   "label": "Ignore Available Stock"
+  },
+  {
+   "fieldname": "column_break_dazd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "raw_materials_warehouse",
+   "fieldtype": "Link",
+   "label": "Raw Materials Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "get_items_for_mr",
+   "fieldtype": "Button",
+   "label": "Get Raw Materials for Purchase"
+  },
+  {
+   "fieldname": "transfer_materials",
+   "fieldtype": "Button",
+   "label": "Get Raw Materials for Transfer"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "accounting_dimensions_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Dimensions"
+  },
+  {
+   "fetch_from": "cost_centre.person_responsible",
+   "fieldname": "custom_line_of_business",
+   "fieldtype": "Link",
+   "label": "Segment",
+   "options": "Cost Center"
+  },
+  {
+   "fetch_from": "custom_line_of_business.custom_segment",
+   "fieldname": "custom_cost_centre",
+   "fieldtype": "Link",
+   "label": "Cost Centre",
+   "options": "Segment"
+  },
+  {
+   "fieldname": "column_break_sbbf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "custom_line_of_business.custom_segment",
+   "fieldname": "custom_cc",
+   "fieldtype": "Link",
+   "label": "Parent Cost Centre",
+   "options": "Segment"
+  },
+  {
+   "fetch_from": "cost_centre.person_responsible",
+   "fieldname": "custom_person_responsible",
+   "fieldtype": "Data",
+   "label": "Person Responsible",
+   "translatable": 1
+  },
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "label": "Refeneces",
+   "options": "Material Request"
+  },
+  {
+   "fieldname": "section_break_qohn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "raw_materials",
+   "fieldtype": "Table",
+   "label": "Raw Materials",
+   "no_copy": 1,
+   "options": "Raw materials child"
+  },
+  {
+   "fieldname": "manufacturing_process_tab",
+   "fieldtype": "Tab Break",
+   "label": "Manufacturing Process"
+  },
+  {
+   "fieldname": "section_break_qpmv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "operations",
+   "fieldtype": "Table",
+   "label": "Operations",
+   "options": "BOM Operation"
+  },
+  {
+   "fieldname": "tab_break_nzlh",
+   "fieldtype": "Tab Break",
+   "label": "Work Order"
+  },
+  {
+   "fieldname": "work_order_progress",
+   "fieldtype": "HTML",
+   "label": "Work Order Progress"
+  },
+  {
+   "fieldname": "work_order_section",
+   "fieldtype": "Section Break",
+   "label": "WORK ORDER"
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Work Order",
+   "options": "Work Order"
+  },
+  {
+   "fieldname": "production_item",
+   "fieldtype": "Link",
+   "label": "Production Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "production_quantity",
+   "fieldtype": "Float",
+   "label": "Production Quantity"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_multi_level_bom",
+   "fieldtype": "Check",
+   "label": "Use Multi Level Bom"
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_atlq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "production_item",
+   "fieldname": "bom",
+   "fieldtype": "Link",
+   "label": "BOM",
+   "options": "BOM",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "planned_start_date",
+   "fieldtype": "Datetime",
+   "label": "Planned Start Date"
+  },
+  {
+   "fieldname": "wip_warehouse",
+   "fieldtype": "Link",
+   "label": "Work-in-Progress Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "section_break_vvnm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "required_items",
+   "fieldtype": "Table",
+   "label": "Required Items",
+   "options": "Work Order Item"
+  },
+  {
+   "fieldname": "operation",
+   "fieldtype": "Table",
+   "label": "Operation",
+   "options": "Work Order Operation"
+  },
+  {
+   "fieldname": "job_card_tab",
+   "fieldtype": "Tab Break",
+   "label": "Job Card"
+  },
+  {
+   "fieldname": "workstation_dashboard",
+   "fieldtype": "HTML",
+   "label": "Workstation Dashboard"
+  },
+  {
+   "fieldname": "section_break_utyi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "job_card",
+   "fieldtype": "Table",
+   "label": "Job Card",
+   "options": "Biofoundry Job Card Detail"
+  },
+  {
+   "fieldname": "section_break_wfwa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "job_card_details",
+   "fieldtype": "HTML",
+   "label": "Job Card Details"
+  },
+  {
+   "fieldname": "activity_tab",
+   "fieldtype": "Tab Break",
+   "label": "Activity"
+  },
+  {
+   "fieldname": "html_aeqb",
+   "fieldtype": "HTML",
+   "options": "<div><button class=\"btn btn-primary btn-add-note\">Add  Note</button></div>\n"
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Table",
+   "label": "Note",
+   "options": "Biofoundary Note"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Material Request for Biofoundry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [
+  {
+   "link_doctype": "Stock Entry",
+   "link_fieldname": "stock_entry_type",
+   "table_fieldname": "stock_entry_type"
+  },
+  {
+   "link_doctype": "Purchase Order",
+   "link_fieldname": "requested_to",
+   "table_fieldname": "requested_to"
+  },
+  {
+   "link_doctype": "Material Request",
+   "link_fieldname": "custom_material_request_biofoundary",
+   "table_fieldname": "name"
+  }
+ ],
+ "modified": "2025-09-26 16:36:47.666741",
+ "modified_by": "Administrator",
+ "module": "Biofoundary",
+ "name": "Material Request for Biofoundry",
+ "naming_rule": "Expression",
+ "owner": "pragati@gmail.com",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1,
+ "track_views": 1
+}
