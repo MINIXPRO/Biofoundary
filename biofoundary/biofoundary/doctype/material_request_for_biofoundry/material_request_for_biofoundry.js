@@ -1987,14 +1987,14 @@ frappe.ui.form.on('Biofoundary Plasmid Kit', {
 
 
 
-frappe.ui.form.on('Biofoundary child', {
-    item_detail_add: function(frm, cdt, cdn) {
-        frm.fields_dict.item_detail.grid.get_field('item').get_query = function(doc, cdt, cdn) {
-            return {
-                filters: {
-                    custom_biofoundary_type: frm.doc.biofoundary_type || ""
-                }
-            };
-        };
-    }
-});
+// frappe.ui.form.on('Biofoundary child', {
+//     item_detail_add: function(frm, cdt, cdn) {
+//         frm.fields_dict.item_detail.grid.get_field('item').get_query = function(doc, cdt, cdn) {
+//             return {
+//                 filters: {
+//                     custom_biofoundary_type: frm.doc.biofoundary_type || ""
+//                 }
+//             };
+//         };
+//     }
+// });
