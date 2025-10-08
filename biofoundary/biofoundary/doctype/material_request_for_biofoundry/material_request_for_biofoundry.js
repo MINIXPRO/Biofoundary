@@ -50,7 +50,7 @@ frappe.ui.form.on("Material Request for Biofoundry", {
             update_job_card_html(frm, []);
         }
 
-        if (frm.doc.work_order && frm.doc.workflow_state === "Order created") {
+        if (frm.doc.work_order) {
             frm.add_custom_button(__("Start"), function () {
                 let max = flt(frm.doc.qty || 1);  // use qty field from your doctype, default 1 if empty
 
