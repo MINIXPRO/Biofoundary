@@ -1,7 +1,6 @@
 // Copyright (c) 2025, Pragati Dike and contributors
 // For license information, please see license.txt
 
-
 frappe.ui.form.on("Material Request for Biofoundry", {
     refresh: function(frm) {
         // Clear any existing timers
@@ -1479,7 +1478,6 @@ function calculateRequiredLeadTime(frm) {
     }
 }
 
-
 function assign_document(frm, child_row) {
     // Check if ToDo already exists
     frappe.db.get_list('ToDo', {
@@ -1577,6 +1575,7 @@ function update_todo_statuses(frm) {
         }
     });
 }
+
 function updateSubsequentDates(frm, cdt, cdn) {
 	const rows = frm.doc.table_sumu || [];
 	const changedRow = locals[cdt][cdn];
@@ -1584,198 +1583,119 @@ function updateSubsequentDates(frm, cdt, cdn) {
 
 	if (changedRowIdx === -1 || changedRowIdx === rows.length - 1) return;
 
-	const changedDate = frappe.datetime.str_to_obj(changedRow.date);
+	const changedDate = frappe.datetime.str_to_obj(changedRow.standard_date_overdue);
+	if (!changedDate) return;
 
-	for (let i = changedRowIdx + 1; i < rows.length; i++) {
-		const daysToAdd = i - changedRowIdx;
-		const newDate = frappe.datetime.add_days(changedRow.date, daysToAdd);
-		frappe.model.set_value(cdt, rows[i].name, 'date', newDate, () => {
-			// Call calculateRequiredLeadTime after updating subsequent dates
-			calculateRequiredLeadTime(frm);
-		});
+	// Step 1: Get employee holiday list
+	frappe.call({
+		method: 'frappe.client.get_value',
+		args: {
+			doctype: 'Employee',
+			filters: { user_id: frappe.session.user },
+			fieldname: 'holiday_list'
+		},
+		callback: function(empRes) {
+			if (!empRes.message || !empRes.message.holiday_list) {
+				frappe.msgprint({
+					title: __('Error'),
+					indicator: 'red',
+					message: __('No holiday list found for the employee.')
+				});
+				return;
+			}
+
+			let holiday_list = empRes.message.holiday_list;
+
+			// Step 2: Get holiday dates
+			frappe.call({
+				method: 'frappe.client.get',
+				args: {
+					doctype: 'Holiday List',
+					name: holiday_list
+				},
+				callback: function(holidayRes) {
+					let holidays = (holidayRes.message.holidays || []).map(h => h.holiday_date);
+
+					// Step 3: Update subsequent dates
+					for (let i = changedRowIdx + 1; i < rows.length; i++) {
+						const daysToAdd = rows[i].day - rows[i - 1].day;
+						const newDate = getNextWorkingDate(changedDate, holidays, daysToAdd);
+						if (newDate) {
+							frappe.model.set_value(cdt, rows[i].name, 'standard_date_overdue', newDate);
+							changedDate = frappe.datetime.str_to_obj(newDate);
+						}
+					}
+
+					frm.refresh_field('table_sumu');
+				}
+			});
+		}
+	});
+}
+
+function updateCompletionInfo(frm, cdt, cdn) {
+	const row = locals[cdt][cdn];
+	const today = frappe.datetime.now_date();
+
+	const formattedToday = frappe.datetime.str_to_user(today);
+	const formattedOriginal = row.date ? frappe.datetime.str_to_user(row.date) : null;
+
+	if (row.standard_date_overdue !== today) {
+		frappe.model.set_value(cdt, cdn, 'standard_date_overdue', today);
 	}
+
+	const newRemark = "Completed";
+
+	if (!row.remark || row.remark !== newRemark) {
+		frappe.model.set_value(cdt, cdn, 'remark', newRemark);
+	}
+
+	calculateRequiredLeadTime(frm);
+}
+
+function updateOverdueRemarks(frm) {
+	const today = frappe.datetime.now_date();
+	const todayDate = frappe.datetime.str_to_obj(today);
+	const rows = frm.doc.table_sumu || [];
+
+	rows.forEach(row => {
+		const isCompleted = row.status === 'Close' || row.activity_status === 'Completed';
+
+		if (!isCompleted && row.standard_date_overdue) {
+			const dueDate = frappe.datetime.str_to_obj(row.standard_date_overdue);
+
+			if (dueDate && todayDate > dueDate) {
+				const overdueDays = frappe.datetime.get_diff(todayDate, dueDate);
+				const originalDateFormatted = frappe.datetime.str_to_user(row.date);
+				const newRemark = `${overdueDays} day(s) overdue (Original: ${originalDateFormatted})`;
+
+				if (!row.remark || !row.remark.includes("overdue") || row.remark !== newRemark) {
+					frappe.model.set_value(row.doctype, row.name, 'remark', newRemark);
+				}
+			} else if (row.remark && row.remark.includes("overdue")) {
+				frappe.model.set_value(row.doctype, row.name, 'remark', '');
+			}
+		}
+	});
 
 	frm.refresh_field('table_sumu');
 }
 
-function calculateRequiredLeadTime(frm) {
-	// 1. Retrieve the last row date from table_sumu
-	let tableData = frm.doc.table_sumu; // Access the table data directly from the document using the correct table name
-
-	if (tableData && tableData.length > 0) {
-		let lastRow = tableData[tableData.length - 1];
-		let lastRowDate = frappe.datetime.str_to_obj(lastRow.date); // Use frappe.datetime.str_to_obj for parsing dates
-
-		// 2. Retrieve the acceptance_date from Details tab
-		let acceptanceDate = frappe.datetime.str_to_obj(frm.doc.acceptance_date);
-
-		if(acceptanceDate && lastRowDate){
-			// 3. Calculate the difference in days
-			let timeDiff = lastRowDate.getTime() - acceptanceDate.getTime();
-			let diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
-            frm.doc.requested_lead_time = diffDays;
-
-			frm.set_value('requested_lead_time', diffDays + " Days");
-		} else {
-			frm.set_value('requested_lead_time', null);
-		}
-	} else {
-		frm.set_value('requested_lead_time', null);
-	}
-}
-
-
-function updateCompletionInfo(frm, cdt, cdn) {
-    const row = locals[cdt][cdn];
-    const today = frappe.datetime.now_date();
-
-    // Format today's date and original date
-    const formattedToday = frappe.datetime.str_to_user(today);
-    const formattedOriginal = row.date ? frappe.datetime.str_to_user(row.date) : null;
-
-    // Update standard_date_overdue to today's date if different
-    if (row.standard_date_overdue !== today) {
-        frappe.model.set_value(cdt, cdn, 'standard_date_overdue', today);
-    }
-
-    // Update remark with formatted date
-    const originalDate = formattedOriginal ? ` (Original: ${formattedOriginal})` : '';
-    const newRemark = "Completed";
-
-    if (!row.remark || row.remark !== newRemark) {
-        frappe.model.set_value(cdt, cdn, 'remark', newRemark);
-    }
-
-    calculateRequiredLeadTime(frm);
-}
-
-
-function updateSubsequentDates(frm, cdt, cdn) {
-    const rows = frm.doc.table_sumu || [];
-    const changedRow = locals[cdt][cdn];
-    const changedRowIdx = rows.findIndex(row => row.name === cdn);
-
-    if (changedRowIdx === -1 || changedRowIdx === rows.length - 1) return;
-
-    const changedDate = frappe.datetime.str_to_obj(changedRow.standard_date_overdue);
-    if (!changedDate) return;
-
-    // Step 1: Get employee holiday list
-    frappe.call({
-        method: 'frappe.client.get_value',
-        args: {
-            doctype: 'Employee',
-            filters: { user_id: frappe.session.user },
-            fieldname: 'holiday_list'
-        },
-        callback: function(empRes) {
-            if (!empRes.message || !empRes.message.holiday_list) {
-                frappe.msgprint({
-                    title: __('Error'),
-                    indicator: 'red',
-                    message: __('No holiday list found for the employee.')
-                });
-                return;
-            }
-
-            let holiday_list = empRes.message.holiday_list;
-
-            // Step 2: Get holiday dates
-            frappe.call({
-                method: 'frappe.client.get',
-                args: {
-                    doctype: 'Holiday List',
-                    name: holiday_list
-                },
-                callback: function(holidayRes) {
-                    let holidays = (holidayRes.message.holidays || []).map(h => h.holiday_date);
-
-                    // Step 3: Update subsequent dates
-                    for (let i = changedRowIdx + 1; i < rows.length; i++) {
-                        const daysToAdd = rows[i].day - rows[i - 1].day;
-                        const newDate = getNextWorkingDate(changedDate, holidays, daysToAdd);
-                        if (newDate) {
-                            frappe.model.set_value(cdt, rows[i].name, 'standard_date_overdue', newDate);
-                            changedDate = frappe.datetime.str_to_obj(newDate); // Update changedDate for the next iteration
-                        }
-                    }
-
-                    frm.refresh_field('table_sumu');
-                }
-            });
-        }
-    });
-}
-function calculateRequiredLeadTime(frm) {
-    let tableData = frm.doc.table_sumu;
-    if (tableData && tableData.length > 0) {
-        let lastRow = tableData[tableData.length - 1];
-        let lastRowDate = frappe.datetime.str_to_obj(lastRow.standard_date_overdue);
-        let acceptanceDate = frappe.datetime.str_to_obj(frm.doc.acceptance_date);
-
-        if (acceptanceDate && lastRowDate) {
-            let timeDiff = lastRowDate.getTime() - acceptanceDate.getTime();
-            let diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
-            frm.set_value('requested_lead_time', diffDays + " Days");
-        } else {
-            frm.set_value('requested_lead_time', null);
-        }
-    } else {
-        frm.set_value('requested_lead_time', null);
-    }
-
-    updateOverdueRemarks(frm);
-}
-
-function updateOverdueRemarks(frm) {
-    const today = frappe.datetime.now_date();
-    const todayDate = frappe.datetime.str_to_obj(today);
-    const rows = frm.doc.table_sumu || [];
-
-    rows.forEach(row => {
-        const isCompleted = row.status === 'Close' || row.activity_status === 'Completed';
-
-        if (!isCompleted && row.standard_date_overdue) {
-            const dueDate = frappe.datetime.str_to_obj(row.standard_date_overdue);
-
-            if (dueDate && todayDate > dueDate) {
-                const overdueDays = frappe.datetime.get_diff(todayDate, dueDate);
-
-                // Format original date in DD-MM-YYYY
-                const originalDateFormatted = frappe.datetime.str_to_user(row.date);
-
-                const newRemark = `${overdueDays} day(s) overdue (Original: ${originalDateFormatted})`;
-
-                if (!row.remark || !row.remark.includes("overdue") || row.remark !== newRemark) {
-                    frappe.model.set_value(row.doctype, row.name, 'remark', newRemark);
-                }
-            } else if (row.remark && row.remark.includes("overdue")) {
-                frappe.model.set_value(row.doctype, row.name, 'remark', '');
-            }
-        }
-    });
-
-    frm.refresh_field('table_sumu');
-}
-
 function getNextWorkingDate(startDate, holidays, daysToAdd) {
-    if (!startDate) return null;
-    let date = frappe.datetime.str_to_obj(startDate);
-    if (!date) return null;
+	if (!startDate) return null;
+	let date = frappe.datetime.str_to_obj(startDate);
+	if (!date) return null;
 
-    let added = 0;
-    while (added < daysToAdd) {
-        date = frappe.datetime.add_days(date, 1);
-        const dateStr = frappe.datetime.obj_to_str(date);
-        if (!holidays.includes(dateStr)) {
-            added++;
-        }
-    }
-    return frappe.datetime.obj_to_str(date);
+	let added = 0;
+	while (added < daysToAdd) {
+		date = frappe.datetime.add_days(date, 1);
+		const dateStr = frappe.datetime.obj_to_str(date);
+		if (!holidays.includes(dateStr)) {
+			added++;
+		}
+	}
+	return frappe.datetime.obj_to_str(date);
 }
-
-
-
 
 frappe.ui.form.on("Biofoundry Job Card Detail", {
 	job_card: function(frm, cdt, cdn) {
@@ -1832,7 +1752,10 @@ frappe.ui.form.on("Biofoundry Job Card Detail", {
 					if (r.message) {
 						frappe.model.set_value(cdt, cdn, "start_time", data.start_time);
 						frappe.model.set_value(cdt, cdn, "status", r.message.status);
-						frappe.show_alert({ message: __("Job started successfully"), indicator: "green" });
+						frappe.show_alert({ 
+							message: __("Job started successfully"), 
+							indicator: "green" 
+						});
 						frm.refresh();
 					}
 				}
@@ -1847,52 +1770,162 @@ frappe.ui.form.on("Biofoundry Job Card Detail", {
 			return;
 		}
 
-		frappe.prompt([
-			{
-				fieldtype: "Float",
-				label: __("Completed Quantity"),
-				fieldname: "qty",
-				reqd: 1,
-				default: 1
+		// Get Job Card details to check expected start date
+		frappe.call({
+			method: "frappe.client.get",
+			args: {
+				doctype: "Job Card",
+				name: row.job_card
 			},
-			{
-				fieldtype: "Datetime",
-				label: __("End Time"),
-				fieldname: "end_time",
-				reqd: 1,
-				default: frappe.datetime.now_datetime()
-			}
-		], function(data) {
-			if (data.qty <= 0) {
-				frappe.throw(__("Quantity should be greater than 0"));
-				return;
-			}
-
-			frappe.call({
-				method: "biofoundary.biofoundary.doctype.material_request_for_biofoundry.material_request_for_biofoundry.complete_job_card",
-				args: {
-					job_card: row.job_card,
-					qty: data.qty,
-					end_time: data.end_time
-				},
-				callback: function(r) {
-					if (r.message) {
-						frappe.model.set_value(cdt, cdn, "end_time", data.end_time);
-						frappe.model.set_value(cdt, cdn, "completed_qty", data.qty);
-						frappe.model.set_value(cdt, cdn, "status", r.message.status);
-						frappe.show_alert({ message: __("Job completed successfully"), indicator: "green" });
-						frm.refresh();
+			callback: function(r) {
+				if (!r.message) return;
+				
+				let job_card = r.message;
+				let expected_start_date = job_card.expected_start_date;
+				let actual_start_time = row.start_time;
+				let current_datetime = frappe.datetime.now_datetime();
+				
+				// Calculate if job started late (1 or more days)
+				let is_late_start = false;
+				let late_start_days = 0;
+				
+				if (expected_start_date && actual_start_time) {
+					let expected_start = frappe.datetime.get_datetime_as_string(expected_start_date).split(' ')[0];
+					let actual_start = frappe.datetime.get_datetime_as_string(actual_start_time).split(' ')[0];
+					let expected_start_obj = frappe.datetime.str_to_obj(expected_start);
+					let actual_start_obj = frappe.datetime.str_to_obj(actual_start);
+					
+					// Calculate days difference
+					late_start_days = frappe.datetime.get_day_diff(actual_start, expected_start);
+					
+					// Consider it late if 1 or more days
+					if (late_start_days >= 1) {
+						is_late_start = true;
 					}
 				}
-			});
-		}, __("Complete Job"), __("Complete"));
+				
+				// Prepare prompt fields
+				let prompt_fields = [
+					{
+						fieldtype: "Float",
+						label: __("Completed Quantity"),
+						fieldname: "qty",
+						reqd: 1,
+						default: 1
+					},
+					{
+						fieldtype: "Datetime",
+						label: __("End Time"),
+						fieldname: "end_time",
+						reqd: 1,
+						default: current_datetime
+					},
+					{
+						fieldtype: "Section Break",
+						label: __("Completion Details")
+					}
+				];
+				
+				// Show late start alert if applicable
+				if (is_late_start) {
+					prompt_fields.push({
+						fieldtype: "HTML",
+						fieldname: "delay_info",
+						options: `<div class="alert alert-warning">
+							<strong>Late Start Alert!</strong><br>
+							Expected Start Date: ${frappe.datetime.str_to_user(expected_start_date)}<br>
+							Actual Start Date: ${frappe.datetime.str_to_user(actual_start_time)}<br>
+							Delay: ${late_start_days} day(s)
+						</div>`
+					});
+					
+					prompt_fields.push({
+						fieldtype: "Small Text",
+						label: __("Reason for Late Start"),
+						fieldname: "late_start_remark",
+						reqd: 1,
+						description: __("Please provide a reason for the delayed start (1 or more days late)")
+					});
+				}
+				
+				// // Always add general completion remark (optional)
+				// prompt_fields.push({
+				// 	fieldtype: "Small Text",
+				// 	label: is_late_start ? __("Additional Notes") : __("Completion Remark"),
+				// 	fieldname: "completion_remark",
+				// 	reqd: 0,
+				// 	description: is_late_start ? 
+				// 		__("Any additional notes about the job completion (optional)") :
+				// 		__("Add any notes or observations about the job completion (optional)")
+				// });
+				
+				frappe.prompt(prompt_fields, function(data) {
+					if (data.qty <= 0) {
+						frappe.throw(__("Quantity should be greater than 0"));
+						return;
+					}
+
+					// Build remark
+					let remark_parts = [];
+					
+					// Add late start info
+					if (is_late_start && data.late_start_remark) {
+						remark_parts.push(`Late start by ${late_start_days} day(s). Reason: ${data.late_start_remark}`);
+					}
+					
+					// Add general completion remark if provided
+					if (data.completion_remark) {
+						if (is_late_start) {
+							remark_parts.push(`Notes: ${data.completion_remark}`);
+						} else {
+							remark_parts.push(`Completed: ${data.completion_remark}`);
+						}
+					} else if (!is_late_start) {
+						remark_parts.push("Completed on time");
+					}
+					
+					// Combine all remarks
+					let existing_remark = row.remark || "";
+					let final_remark = remark_parts.join(" | ");
+					
+					if (existing_remark) {
+						final_remark = existing_remark + " | " + final_remark;
+					}
+
+					frappe.call({
+						method: "biofoundary.biofoundary.doctype.material_request_for_biofoundry.material_request_for_biofoundry.complete_job_card",
+						args: {
+							job_card: row.job_card,
+							qty: data.qty,
+							end_time: data.end_time
+						},
+						callback: function(r) {
+							if (r.message) {
+								frappe.model.set_value(cdt, cdn, "end_time", data.end_time);
+								frappe.model.set_value(cdt, cdn, "completed_qty", data.qty);
+								frappe.model.set_value(cdt, cdn, "status", r.message.status);
+								
+								// Always set remark
+								frappe.model.set_value(cdt, cdn, "remark", final_remark);
+								
+								// Set delay days if late start
+								if (is_late_start) {
+									frappe.model.set_value(cdt, cdn, "days", late_start_days.toString());
+								}
+								
+								frappe.show_alert({ 
+									message: __("Job completed successfully"), 
+									indicator: "green" 
+								});
+								frm.refresh();
+							}
+						}
+					});
+				}, __("Complete Job"), __("Complete"));
+			}
+		});
 	}
 });
-
-
-
-
-
 
 frappe.ui.form.on('Biofoundary Plasmid Kit', {
 	date(frm, cdt, cdn) {
@@ -1909,7 +1942,6 @@ frappe.ui.form.on('Biofoundary Plasmid Kit', {
 			row.__original_date = row.date;
 			updateSubsequentDates(frm, cdt, cdn);
 		}
-		// Call calculateRequiredLeadTime when any date in the table changes
 		frappe.model.set_value(cdt, cdn, 'date', locals[cdt][cdn].date, () => {
 			calculateRequiredLeadTime(frm);
 		});
@@ -1919,82 +1951,64 @@ frappe.ui.form.on('Biofoundary Plasmid Kit', {
 		row.__original_date = row.date;
 	},
 
-    standard_date_overdue(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
+	standard_date_overdue(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
 
-        // Role check
-        if (!frappe.user_roles.includes('Manufacturing Manager')) {
-            frappe.msgprint({
-                title: __('Permission Denied'),
-                indicator: 'red',
-                message: __('Only Manufacturing Manager can modify the date field.')
-            });
-            frappe.model.set_value(cdt, cdn, 'standard_date_overdue', row.__original_standard_date || row.standard_date_overdue);
-            return;
-        }
+		if (!frappe.user_roles.includes('Manufacturing Manager')) {
+			frappe.msgprint({
+				title: __('Permission Denied'),
+				indicator: 'red',
+				message: __('Only Manufacturing Manager can modify the date field.')
+			});
+			frappe.model.set_value(cdt, cdn, 'standard_date_overdue', row.__original_standard_date || row.standard_date_overdue);
+			return;
+		}
 
-        const previousDate = row.__original_standard_date;
-        const newDate = row.standard_date_overdue;
+		const previousDate = row.__original_standard_date;
+		const newDate = row.standard_date_overdue;
 
-        if (previousDate && previousDate !== newDate) {
-            const currentUser = frappe.session.user_fullname || frappe.session.user;
-            const remarkText = `Date changed from ${previousDate} to ${newDate} by ${currentUser}`;
+		if (previousDate && previousDate !== newDate) {
+			const currentUser = frappe.session.user_fullname || frappe.session.user;
+			const remarkText = `Date changed from ${previousDate} to ${newDate} by ${currentUser}`;
 
-            frappe.model.set_value(cdt, cdn, 'remark', remarkText).then(() => {
-                const gridRow = frm.fields_dict.table_sumu.grid.get_row(cdn);
-                if (gridRow) {
-                    gridRow.toggle_editable('remark', false);
-                }
-            });
-        }
+			frappe.model.set_value(cdt, cdn, 'remark', remarkText).then(() => {
+				const gridRow = frm.fields_dict.table_sumu.grid.get_row(cdn);
+				if (gridRow) {
+					gridRow.toggle_editable('remark', false);
+				}
+			});
+		}
 
-        row.__original_standard_date = newDate;
-        updateSubsequentDates(frm, cdt, cdn);
-        calculateRequiredLeadTime(frm);
-    },
+		row.__original_standard_date = newDate;
+		updateSubsequentDates(frm, cdt, cdn);
+		calculateRequiredLeadTime(frm);
+	},
 
-    activity_status(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        // If activity_status is set to Completed, set status to Close
-        if (row.activity_status === 'Completed') {
-            frappe.model.set_value(cdt, cdn, 'status', 'Close');
-            updateCompletionInfo(frm, cdt, cdn);
-        }
-    },
+	activity_status(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (row.activity_status === 'Completed') {
+			frappe.model.set_value(cdt, cdn, 'status', 'Close');
+			updateCompletionInfo(frm, cdt, cdn);
+		}
+	},
 
-    status(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        // If status is set to Close, set activity_status to Completed
-        if (row.status === 'Close') {
-            frappe.model.set_value(cdt, cdn, 'activity_status', 'Completed');
-            updateCompletionInfo(frm, cdt, cdn);
-        }
-    },
+	status(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		if (row.status === 'Close') {
+			frappe.model.set_value(cdt, cdn, 'activity_status', 'Completed');
+			updateCompletionInfo(frm, cdt, cdn);
+		}
+	},
 
-    onload_post_render(frm, cdt, cdn) {
-        const row = locals[cdt][cdn];
-        row.__original_standard_date = row.standard_date_overdue;
+	onload_post_render(frm, cdt, cdn) {
+		const row = locals[cdt][cdn];
+		row.__original_standard_date = row.standard_date_overdue;
 
-        if (row.remark) {
-            const gridRow = frm.fields_dict.table_sumu.grid.get_row(cdn);
-            if (gridRow) {
-                gridRow.toggle_editable('remark', false);
-            }
-        }
-    }
-
+		if (row.remark) {
+			const gridRow = frm.fields_dict.table_sumu.grid.get_row(cdn);
+			if (gridRow) {
+				gridRow.toggle_editable('remark', false);
+			}
+		}
+	}
 });
-
-
-
-// frappe.ui.form.on('Biofoundary child', {
-//     item_detail_add: function(frm, cdt, cdn) {
-//         frm.fields_dict.item_detail.grid.get_field('item').get_query = function(doc, cdt, cdn) {
-//             return {
-//                 filters: {
-//                     custom_biofoundary_type: frm.doc.biofoundary_type || ""
-//                 }
-//             };
-//         };
-//     }
-// });
